@@ -1,0 +1,12 @@
+name: 'PR Workflow Manager'
+description: 'Manages PR workflows and base branch checks'
+
+inputs:
+  silent:
+    description: 'Skip all checks and show warning'
+    required: false
+    default: 'false'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js' 

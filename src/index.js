@@ -129,8 +129,8 @@ async function run() {
                 colorLog(`Branch: ${pr.head.ref}`, Colors.GREEN);
 
                 try {
-                    // Get the latest run for this PR to rerun
-                    const rerunUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${pr.number}/runs`;
+                    // Rerun the PR workflow
+                    const rerunUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${pr.head.sha}/rerun`;
                     const response = await fetch(rerunUrl, {
                         method: 'POST',
                         headers: {

@@ -34730,21 +34730,31 @@ async function run() {
                 colorLog(`Branch: ${pr.head.ref}`, Colors.GREEN);
 
                 try {
-                    const { data: runs } = await octokit.actions.listWorkflowRunsForRepo({
-                        owner,
-                        repo,
-                        branch: pr.head.ref
+                    // Get workflow runs using direct API call
+                    const runUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs?branch=${pr.head.ref}`;
+                    const runResponse = await fetch(runUrl, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
                     });
-
-                    if (runs.total_count === 0) {
+                    
+                    const runsData = await runResponse.json();
+                    
+                    if (!runsData.workflow_runs || runsData.workflow_runs.length === 0) {
                         colorLog(`No workflows found for PR #${pr.number}`, Colors.YELLOW);
                         continue;
                     }
 
-                    const response = await octokit.rest.actions.rerunWorkflowRun({
-                        owner,
-                        repo,
-                        run_id: runs.workflow_runs[0].id
+                    // Trigger rerun using direct API call
+                    const runId = runsData.workflow_runs[0].id;
+                    const rerunUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/rerun`;
+                    const response = await fetch(rerunUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        }
                     });
 
                     if (response.status === 201) {

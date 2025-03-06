@@ -129,22 +129,38 @@ async function run() {
                 colorLog(`Branch: ${pr.head.ref}`, Colors.GREEN);
 
                 try {
-                    // Rerun the PR workflow
-                    const rerunUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${pr.head.sha}/rerun`;
-                    const response = await fetch(rerunUrl, {
-                        method: 'POST',
+                    // Get the latest run for this PR
+                    const runsUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs?branch=${pr.head.ref}`;
+                    const runsResponse = await fetch(runsUrl, {
                         headers: {
                             'Authorization': `Bearer ${token}`,
                             'Accept': 'application/vnd.github.v3+json'
                         }
                     });
+                    
+                    const runsData = await runsResponse.json();
+                    if (!runsData.workflow_runs || runsData.workflow_runs.length === 0) {
+                        colorLog(`No runs found for PR #${pr.number}`, Colors.YELLOW);
+                        continue;
+                    }
+
+                    // Trigger rerun
+                    const runId = runsData.workflow_runs[0].id;
+                    const rerunUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/rerun`;
+                    const response = await fetch(rerunUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Accept': 'application/vnd.github.v3+json'
+                        },
+                        body: JSON.stringify({}) // Empty object like in the reference code
+                    });
 
                     if (response.status === 201) {
                         rerunCount++;
-                        colorLog(`✓ Triggered rerun for PR #${pr.number}`, Colors.GREEN);
+                        colorLog(`✓ Triggered rerun for PR #${pr.number} (${pr.head.ref})`, Colors.GREEN);
                     } else {
-                        const errorData = await response.text();
-                        colorLog(`✗ Failed to rerun PR #${pr.number}. Status: ${response.status}. Error: ${errorData}`, Colors.RED);
+                        colorLog(`✗ Failed to trigger PR #${pr.number}`, Colors.RED);
                     }
                 } catch (error) {
                     colorLog(`Error processing PR #${pr.number}: ${error.message}`, Colors.RED);

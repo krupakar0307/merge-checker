@@ -129,43 +129,39 @@ async function run() {
                 colorLog(`Branch: ${pr.head.ref}`, Colors.GREEN);
 
                 try {
-                    // First get the list of workflows
-                    const listWorkflowsUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows`;
-                    const workflowsResponse = await fetch(listWorkflowsUrl, {
+                    // Get the latest workflow run for the PR branch
+                    const runUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs?branch=${pr.head.ref}`;
+                    const runResponse = await fetch(runUrl, {
                         headers: {
                             'Authorization': `Bearer ${token}`,
                             'Accept': 'application/vnd.github.v3+json'
                         }
                     });
                     
-                    const workflows = await workflowsResponse.json();
-                    if (!workflows.workflows || workflows.workflows.length === 0) {
-                        colorLog(`No workflows found in repository`, Colors.YELLOW);
+                    const runsData = await runResponse.json();
+                    
+                    if (!runsData.workflow_runs || runsData.workflow_runs.length === 0) {
+                        colorLog(`No previous workflow runs found for PR #${pr.number}`, Colors.YELLOW);
                         continue;
                     }
 
-                    // Get the first active workflow
-                    const workflow = workflows.workflows[0];
-                    
-                    // Trigger the workflow
-                    const createWorkflowUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflow.id}/dispatches`;
-                    const response = await fetch(createWorkflowUrl, {
+                    // Rerun the latest workflow
+                    const runId = runsData.workflow_runs[0].id;
+                    const rerunUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/rerun`;
+                    const response = await fetch(rerunUrl, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${token}`,
                             'Accept': 'application/vnd.github.v3+json'
-                        },
-                        body: JSON.stringify({
-                            ref: pr.head.ref
-                        })
+                        }
                     });
 
-                    if (response.status === 204) {
+                    if (response.status === 201) {
                         rerunCount++;
-                        colorLog(`✓ Triggered new workflow run for PR #${pr.number}`, Colors.GREEN);
+                        colorLog(`✓ Triggered rerun for PR #${pr.number}`, Colors.GREEN);
                     } else {
                         const errorData = await response.text();
-                        colorLog(`✗ Failed to trigger workflow for PR #${pr.number}. Status: ${response.status}. Error: ${errorData}`, Colors.RED);
+                        colorLog(`✗ Failed to trigger rerun for PR #${pr.number}. Status: ${response.status}. Error: ${errorData}`, Colors.RED);
                     }
                 } catch (error) {
                     colorLog(`Error processing PR #${pr.number}: ${error.message}`, Colors.RED);

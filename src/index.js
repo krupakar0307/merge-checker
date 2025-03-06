@@ -56,8 +56,10 @@ async function checkBaseBranchStatus(octokit, owner, repo, prNumber) {
             colorLog(`Base branch '${baseBranch}' checks are not passing (status: ${status})`, Colors.RED, true);
             return false;
         }
-
+        
+        colorLog(`✓ Base branch '${baseBranch}' is green and ready to accept your PR #${prNumber}`, Colors.GREEN, true);
         return true;
+
     } catch (error) {
         colorLog(`Error checking base branch: ${error.message}`, Colors.RED);
         return false;
@@ -127,38 +129,24 @@ async function run() {
                 colorLog(`Branch: ${pr.head.ref}`, Colors.GREEN);
 
                 try {
-                    // Get workflow runs using direct API call
-                    const runUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs?branch=${pr.head.ref}`;
-                    const runResponse = await fetch(runUrl, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    });
-                    
-                    const runsData = await runResponse.json();
-                    
-                    if (!runsData.workflow_runs || runsData.workflow_runs.length === 0) {
-                        colorLog(`No workflows found for PR #${pr.number}`, Colors.YELLOW);
-                        continue;
-                    }
-
-                    // Trigger rerun using direct API call
-                    const runId = runsData.workflow_runs[0].id;
-                    const rerunUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/rerun`;
-                    const response = await fetch(rerunUrl, {
+                    // Trigger a new workflow run for the PR
+                    const createWorkflowUrl = `https://api.github.com/repos/${owner}/${repo}/actions/workflows/ci.yml/dispatches`;
+                    const response = await fetch(createWorkflowUrl, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${token}`,
                             'Accept': 'application/vnd.github.v3+json'
-                        }
+                        },
+                        body: JSON.stringify({
+                            ref: pr.head.ref
+                        })
                     });
 
-                    if (response.status === 201) {
+                    if (response.status === 204) {
                         rerunCount++;
-                        colorLog(`✓ Triggered rerun for PR #${pr.number}`, Colors.GREEN);
+                        colorLog(`✓ Triggered new workflow run for PR #${pr.number}`, Colors.GREEN);
                     } else {
-                        colorLog(`✗ Failed to trigger PR #${pr.number}`, Colors.RED);
+                        colorLog(`✗ Failed to trigger workflow for PR #${pr.number}`, Colors.RED);
                     }
                 } catch (error) {
                     colorLog(`Error processing PR #${pr.number}: ${error.message}`, Colors.RED);

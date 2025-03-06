@@ -34732,25 +34732,8 @@ async function run() {
                 colorLog(`Branch: ${pr.head.ref}`, Colors.GREEN);
 
                 try {
-                    // Get the latest workflow run for the PR branch
-                    const runUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs?branch=${pr.head.ref}`;
-                    const runResponse = await fetch(runUrl, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    });
-                    
-                    const runsData = await runResponse.json();
-                    
-                    if (!runsData.workflow_runs || runsData.workflow_runs.length === 0) {
-                        colorLog(`No previous workflow runs found for PR #${pr.number}`, Colors.YELLOW);
-                        continue;
-                    }
-
-                    // Rerun the latest workflow
-                    const runId = runsData.workflow_runs[0].id;
-                    const rerunUrl = `https://api.github.com/repos/${owner}/${repo}/actions/runs/${runId}/rerun`;
+                    // Get the latest run for this PR to rerun
+                    const rerunUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${pr.number}/runs`;
                     const response = await fetch(rerunUrl, {
                         method: 'POST',
                         headers: {
@@ -34764,7 +34747,7 @@ async function run() {
                         colorLog(`✓ Triggered rerun for PR #${pr.number}`, Colors.GREEN);
                     } else {
                         const errorData = await response.text();
-                        colorLog(`✗ Failed to trigger rerun for PR #${pr.number}. Status: ${response.status}. Error: ${errorData}`, Colors.RED);
+                        colorLog(`✗ Failed to rerun PR #${pr.number}. Status: ${response.status}. Error: ${errorData}`, Colors.RED);
                     }
                 } catch (error) {
                     colorLog(`Error processing PR #${pr.number}: ${error.message}`, Colors.RED);

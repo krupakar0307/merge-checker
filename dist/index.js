@@ -34741,7 +34741,7 @@ async function run() {
                         continue;
                     }
 
-                    const response = await octokit.actions.rerunWorkflow({
+                    const response = await octokit.rest.actions.rerunWorkflowRun({
                         owner,
                         repo,
                         run_id: runs.workflow_runs[0].id
